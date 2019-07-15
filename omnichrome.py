@@ -58,12 +58,13 @@ class OmniPix():
         )
 
 class OmniCluster():
-    def __init__(self, omni_pixels, chunk_color, chunk_size=20):
+    def __init__(self, omni_pixels, chunk_pix, chunk_size=20, depth=0):
         self.omni_pixels = omni_pixels
-        self.chunk_color = chunk_color
+        self.chunk_pix = chunk_pix
         self.chunk_size = chunk_size
         self.tree = None
         self.leafs = None
+        self.depth = depth
 
         self.build()
 
@@ -90,25 +91,40 @@ class OmniCluster():
             centroid_assignments[centroid] = []
         # Assign each pixel to a centroid
         for omni_pix in self.omni_pixels:
-            centroid = min(centroids, key=lambda x: x.dist(omni_pix))
+            centroid = min(centroids, key=omni_pix.dist)
             centroid_assignments[centroid].append(omni_pix)
         # Build tree
         self.tree = {}
         for centroid in centroid_assignments:
            self.tree[centroid] = OmniCluster(
             centroid_assignments[centroid], 
-            self.chunk_color,
+            self.chunk_pix,
             self.chunk_size,
+            depth=self.depth+1,
         )
 
-    def search(self, target):
+    def pop(self, target):
         if self.tree is None:
-            # If this is the 'stem' (the last node from the bottom), just return the closest leaf
-            return min(self.leafs, key=lambda x: target.dist(x))
+            # If this is the 'stem' (the last node from the bottom), just get the closest leaf
+            if len(self.leafs) == 0:
+                return None
+            node = min(self.leafs, key=lambda x: target.dist(x))
+            self.leafs.remove(node)
+            return node
+        elif len(self.tree) == 0:
+            return None
         else:
-            # Return the result of a search of the closest node
-            return self.tree[min(self.tree, key=lambda x: target.dist(x))].search(target)
-
+            while True:
+                if len(self.tree) > 0:
+                    # Get the result of a search of the closest node
+                    subtree_color = min(self.tree, key=lambda x: target.dist(x))
+                    node = self.tree[subtree_color].pop(target)
+                    if node is None:
+                        del self.tree[subtree_color]
+                    else:
+                        return node
+                else:
+                    return None
 
 class OmniChunk():
     def __init__(self, chunk_pix):
@@ -135,21 +151,33 @@ class OmniChunk():
                     pass
                 else:
                     adj_pixels_set.add(adj_pix)
-                    heappush(adj_pixels_heap, (adj_pix.potential, adj_pix))
+                    # Push the pixel on to the heap as a (potential, pixel) tuple, subtracting off
+                    # the potential from this chunk so we actually follow a reasonable contour
+                    heappush(
+                        adj_pixels_heap, 
+                        (adj_pix.potential - (1 / adj_pix.dist(self.chunk_pix)), adj_pix)
+                    )
             # Find next pixel
             if len(adj_pixels_set) > 0:
                 potential, current_pix = heappop(adj_pixels_heap)
                 # Remove selected pixel from set
                 adj_pixels_set.discard(current_pix)
             else:
-                # If we ran out of adjacents, pick the closest color and keep going
+                # If we ran out of adjacents, pick the closest color and keep going unless we're 
+                # done filling this chunk
+                if len(selected_pix) == count:
+                    break
                 current_pix = min(
                     [x for x in omni_cube.cube if x.potential < _INF and not x.selected], 
-                    key=key_func,
+                    key=self.chunk_pix.dist,
                 )
+                print('BAD ' + str(current_pix))
+        print(len(selected_pix))
         # Construct a k-means cluster tree
-        self.tree = OmniCluster(selected_pix, self.chunk_color)
+        self.tree = OmniCluster(selected_pix, self.chunk_pix)
 
+    def pop(self, omni_pix):
+        return self.tree.pop(omni_pix)
 
 class OmniCube():
     def __init__(self, colorsize, chunks):
@@ -191,33 +219,55 @@ class OmniCube():
         for chunk_color, chunk in self.chunks.items():
             chunk.build(self, self.chunk_sizes[chunk_color])
 
-
     def adj(self, color):
         r, g, b = color.color
         output_list = []
         if r > 0:
             output_list.append(self.cube[(r-1,g,b)])
-        elif r < self.colorsize_max:
+        if r < self.colorsize_max:
             output_list.append(self.cube[(r+1,g,b)])
         if g > 0:
             output_list.append(self.cube[(r,g-1,b)])
-        elif g < self.colorsize_max:
+        if g < self.colorsize_max:
             output_list.append(self.cube[(r,g+1,b)])
         if b > 0:
             output_list.append(self.cube[(r,g,b-1)])
-        elif b < self.colorsize_max:
+        if b < self.colorsize_max:
             output_list.append(self.cube[(r,g,b+1)])
         output_list = [x for x in output_list if not self.cube[x].selected]
         return output_list
 
+    def pop(self, chunk, target):
+        chunk_pix = OmniPix(*chunk)
+        target_pix = OmniPix(*target)
+        return self.chunks[chunk_pix].pop(target_pix)
+
 if __name__ == '__main__':
-    size = (128**3) / 4
+    depth = 128
+    size = (depth**3) / 4
     # size = 20000
     chunks = [
         ((0, 0, 0), size),
         ((10, 0, 10), size),
-        ((50, 0, 50), size),
-        ((0, 50, 0), size),
+        ((15, 0, 15), size),
+        ((0, 15, 0), size),
     ]
 
-    cube = OmniCube(128, chunks)
+    cube = OmniCube(depth, chunks)
+
+    k = 0
+    i = 0
+    n = 0
+    for r in range(depth):
+        print("r =", r)
+        for b in range(depth):
+            for g in range(depth):
+                n += 1
+                k += 1
+                # print(r,g,b, chunks[i][0], k)
+                node = cube.pop(chunks[i][0], (r,g,b))
+                if node is None:
+                    i += 1
+                    k = 0
+                    cube.pop(chunks[i][0], (r,g,b))
+
