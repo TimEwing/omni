@@ -3,8 +3,13 @@ import math
 import random
 from heapq import heappush, heappop
 from functools import total_ordering
+import colorsys
+
+from PIL import Image
+import numpy as np
 
 _INF = float('infinity')
+_SIZE = None
 
 ## Some style notes:
 # rgb and xy tuples can be concat'd down, so (r, g, b) is (r,g,b) etc.
@@ -15,6 +20,7 @@ class OmniPix():
         self.color = (r,g,b)
         self.potential = 0
         self.selected = False
+        self.hsv = self._hsv()
 
     def __eq__(self, other):
         try:
@@ -23,14 +29,13 @@ class OmniPix():
             return self.color == other
 
     def __gt__(self, other):
-        # Compare channel 0, then 1, then 2
-        if self.color[0] > other.color[0]:
-            return True
-        elif self.color[0] < other.color[0]:
-            return False
-        elif self.color[1] > other.color[1]:
+        if self.color[1] > other.color[1]:
             return True
         elif self.color[1] < other.color[1]:
+            return False
+        elif self.color[0] > other.color[0]:
+            return True
+        elif self.color[0] < other.color[0]:
             return False
         elif self.color[2] > other.color[2]:
             return True
@@ -49,12 +54,27 @@ class OmniPix():
         return str(self.color) + ' ' + str(self.potential)
 
     def dist(self, other):
-        ## Easy sum of distances distance for now, maybe do euclidian later...
-        # or maybe do hsv later? who the fuck knows
+        ## Easy sum of distances distance for now, maybe do euclidian later
+        d = (
+            20 * min([
+                (self.hsv[0] - other.hsv[0]) % _SIZE,
+                (other.hsv[0] - self.hsv[0]) % _SIZE,
+            ])
+            + abs(self.hsv[1] - other.hsv[1])
+            + abs(self.hsv[2] - other.hsv[2])
+        )
+        return d if d != 0 else 1e-3
+
+    def _hsv(self):
+        h,s,v = colorsys.rgb_to_hsv(
+            self.color[0] / _SIZE, 
+            self.color[1] / _SIZE, 
+            self.color[2] / _SIZE, 
+        )
         return (
-            abs(self.color[0] - other.color[0]) 
-            + abs(self.color[1] - other.color[1])
-            + abs(self.color[2] - other.color[2])
+            int(h * _SIZE),
+            int(s * _SIZE),
+            int(v * _SIZE),
         )
 
 class OmniCluster():
@@ -132,7 +152,6 @@ class OmniChunk():
         self.tree = None
 
     def build(self, omni_cube, count):
-        print("Building {}".format(self.chunk_pix.color))
         # Select the pixels that will go in this chunk
         selected_pix = []
         ## Use a set to track which pixels have been marked as adjacent and a heap to track their 
@@ -171,8 +190,6 @@ class OmniChunk():
                     [x for x in omni_cube.cube if x.potential < _INF and not x.selected], 
                     key=self.chunk_pix.dist,
                 )
-                print('BAD ' + str(current_pix))
-        print(len(selected_pix))
         # Construct a k-means cluster tree
         self.tree = OmniCluster(selected_pix, self.chunk_pix)
 
@@ -202,6 +219,7 @@ class OmniCube():
         self.build_chunks()
 
     def set_potentials(self):
+        print("  - Setting potentials")
         for _, color in self.cube.items():
             potential = 0
             for chunk_pix in self.chunk_pixels:
@@ -217,6 +235,7 @@ class OmniCube():
         for chunk_pix in self.chunk_pixels:
             self.chunks[chunk_pix] = OmniChunk(chunk_pix)
         for chunk_color, chunk in self.chunks.items():
+            print("  - Building chunk {}".format(chunk_color.color))
             chunk.build(self, self.chunk_sizes[chunk_color])
 
     def adj(self, color):
@@ -242,32 +261,59 @@ class OmniCube():
         target_pix = OmniPix(*target)
         return self.chunks[chunk_pix].pop(target_pix)
 
+def get_image(filename, size):
+    input_image = np.asarray(Image.open(filename))
+    input_image = input_image * (size/256)
+    input_image = input_image.astype('uint8')
+    return input_image
+
+def save_image(filename, size, arr):
+    output_image = Image.fromarray((arr * (256/size)).astype('uint8'))
+    output_image.save(filename)
+    print("Saved to {}".format(filename))
+
 if __name__ == '__main__':
-    depth = 128
-    size = (depth**3) / 4
-    # size = 20000
-    chunks = [
-        ((0, 0, 0), size),
-        ((10, 0, 10), size),
-        ((15, 0, 15), size),
-        ((0, 15, 0), size),
-    ]
+    _SIZE = 64
+    print("Opening image")
+    input_image = get_image('darkside_64.jpg', _SIZE)
+    input_map = get_image('darkside_64_map.png', _SIZE)
+    print(input_image.shape, input_map.shape)
+    assert input_image.shape == input_map.shape
+    width, height, _ = input_image.shape
 
-    cube = OmniCube(depth, chunks)
+    print("Assigning chunks")
+    input_map_reshaped = input_map.reshape(-1, input_map.shape[2]) # flat map
+    chunks = np.unique(input_map_reshaped, axis=0, return_counts=True)
+    chunks = list(zip(*chunks)) # make (color, count) tuples
+    chunks = [(tuple(c), s) for c,s in chunks][::-1]
+    print("  - Found {} chunks".format(len(chunks)))
+    chunk_map = {}
+    for x in range(width):
+        for y in range(height):
+            chunk_map[(x,y)] = tuple(input_map[x,y])
 
-    k = 0
-    i = 0
-    n = 0
-    for r in range(depth):
-        print("r =", r)
-        for b in range(depth):
-            for g in range(depth):
-                n += 1
-                k += 1
-                # print(r,g,b, chunks[i][0], k)
-                node = cube.pop(chunks[i][0], (r,g,b))
-                if node is None:
-                    i += 1
-                    k = 0
-                    cube.pop(chunks[i][0], (r,g,b))
+    # Build cube
+    print("Building cube")
+    cube = OmniCube(_SIZE, chunks)
 
+    for x in range(width):
+        print("Assigning new colors: {:.2f}%".format((x/width) * 100), end='\r')
+        for y in range(height):
+            target_color_list = []
+            if x > 0:
+                target_color_list.append(tuple(input_image[x-1,y]))
+            if y > 0:
+                target_color_list.append(tuple(input_image[x,y-1]))
+            if x < width-2:
+                target_color_list.append(tuple(input_image[x+1,y]))
+            if y < height-2:
+                target_color_list.append(tuple(input_image[x,y+1]))
+            for _ in range(1):
+                target_color_list.append(tuple(input_image[x,y]))
+            target_color_channels = zip(*target_color_list)
+            target_color = [sum(y) // len(y) for y in target_color_channels]
+            input_image[x,y] = cube.pop(chunk_map[(x,y)], target_color).color
+            # input_image[x,y] = cube.pop(chunk_map[(x,y)], tuple(input_image[x,y])).color
+    print("")
+    # save output
+    save_image('out.bmp', _SIZE, input_image)
