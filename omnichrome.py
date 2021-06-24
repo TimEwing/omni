@@ -64,17 +64,21 @@ class OmniPix():
         # This function is a pretty abstract definition of 'color distance'
         # changing it pretty radically changes the output
         if self == other:
-            return 0
+            return 0 # Don't change this; distance from this is always 0
         d = (
             # Hue is circular; take the shorter distance
+            # The max difference in hue is half that of shade/value but it tends to be
+            # even lower than that. For example, if shade is 50% for both, hue ends up
+            # being 1/8 the weight of the other channels. Scaling by ~8ish gives good
+            # results.
             min([
                 (self.hsv[0] - other.hsv[0]) % _SIZE,
                 (other.hsv[0] - self.hsv[0]) % _SIZE,
             ])
                 * (self.hsv[1] / _SIZE) # Scale hue by normalized shade
                 * (other.hsv[1] / _SIZE) # Repeat for the hue of the comparison color
-                * 6
-            + abs(self.hsv[1] - other.hsv[1]) * 3 # Add difference in shade
+                * 8
+            + abs(self.hsv[1] - other.hsv[1]) # Add difference in shade
             + abs(self.hsv[2] - other.hsv[2]) # Add difference in value
         )
         return d
@@ -106,10 +110,10 @@ class OmniPix():
         )
 
 class OmniCluster():
-    def __init__(self, omni_pixels, chunk_pix, chunk_size=16, depth=0):
+    def __init__(self, omni_pixels, chunk_pix, chunk_size=4, depth=0):
         self.omni_pixels = omni_pixels
         self.chunk_pix = chunk_pix
-        self.chunk_size = chunk_size
+        self.chunk_size = chunk_size # This is the number of leafs per stem
         self.tree = None
         self.leafs = None
         self.depth = depth
@@ -370,9 +374,11 @@ if __name__ == '__main__':
 
     coords = [(x,y) for x in range(width) for y in range(height)]
     def key(coord):
-        return -(coord[0] - width/2) ** 2 + -(coord[1] - height/2) ** 2
+        return min(
+            (coord[0] - width/4) ** 2 + (coord[1] - height/4) ** 2,
+            (coord[0] - 3*width/4) ** 2 + (coord[1] - 3*height/4) ** 2
+        )
     coords = sorted(coords, key=key)
-    # coords[1497274:] = sorted(coords[1497274:])
 
     i = 0
     for x, y in coords:
