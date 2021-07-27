@@ -283,7 +283,7 @@ class OmniCube():
             for g in range(colorsize):
                 for b in range(colorsize):
                     ## Note that not all the data in new color is stored in the key; just the hash.
-                    # therefore cube[(r,g,b)] will always point to the right pixel; you can't have
+                    # but cube[(r,g,b)] will always point to the right pixel; you can't have
                     # a duplicate in this cube (by definition)
                     new_pix = OmniPix(r, g, b)
                     self.cube[new_pix] = new_pix
@@ -347,8 +347,8 @@ def save_image(filename, size, arr):
 if __name__ == '__main__':
     _SIZE = 128
     print("Opening image")
-    input_image = get_image('green_black_128.png', _SIZE)
-    input_map = get_image('green_black_128.png', _SIZE)
+    input_image = get_image('black_128.png', _SIZE)
+    input_map = get_image('black_128.png', _SIZE)
     print("  - Image shape:", input_image.shape)
     try:
         assert input_image.shape == input_map.shape
@@ -374,10 +374,7 @@ if __name__ == '__main__':
 
     coords = [(x,y) for x in range(width) for y in range(height)]
     def key(coord):
-        return min(
-            (coord[0] - width/4) ** 2 + (coord[1] - height/4) ** 2,
-            (coord[0] - 3*width/4) ** 2 + (coord[1] - 3*height/4) ** 2
-        )
+        return (coord[0] - width/2) + (coord[1] - height/2)
     coords = sorted(coords, key=key)
 
     i = 0
