@@ -1,3 +1,4 @@
+from typing import Dict, Mapping
 from OmniPix import OmniPix
 from OmniChunk import OmniChunk
 
@@ -27,11 +28,19 @@ class OmniCube():
     def set_potentials(self):
         print("  - Setting potentials")
         # Total up color potential for each pixel in relation to other chunks
-        # TODO: Use LUT to store value already computed between the same colors
-        for _, color in self.cube.items():
+        # Use LUT to store value already computed between the same colors
+        num_items = len(self.cube.items())
+        LUT: Dict[((int, int, int), (int, int, int)), int] = {}
+        for id, (_, color) in enumerate(self.cube.items()):
+            if id % 10000 == 0: print("    - Color {:.2f}%".format(id/num_items * 100))
             potential = 0
             for chunk_pix in self.chunk_pixels:
-                potential += color.get_potential(chunk_pix)
+                try:
+                    potential += LUT.get((color.hsv, chunk_pix.hsv))
+                except:
+                    new_potential = color.get_potential(chunk_pix)
+                    LUT[(color.hsv, chunk_pix.hsv)] = new_potential
+                    potential += new_potential
             color.potential = potential
 
     def build_chunks(self):

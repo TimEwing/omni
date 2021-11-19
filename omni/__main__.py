@@ -4,6 +4,7 @@
 
 import re
 import math
+from time import time
 
 from typing import Dict, List
 
@@ -89,7 +90,9 @@ if __name__ == '__main__':
 
     # Build cube
     print("Building cube")
+    start = time()
     cube = OmniCube(constants._SIZE, chunks)
+    print(f"Time Ellapsed: {time() - start}")
 
     # # Sort coords based on distance from line y=x
     # coords = [(x,y) for x in range(width) for y in range(height)]
@@ -107,7 +110,7 @@ if __name__ == '__main__':
     i = 0
     for x, y in coords:
         # Print percentage complete
-        if i % 1000 == 0:
+        if i % 10000 == 0:
             print("\rAssigning new colors: {:.2f}%  ".format((i/len(coords)) * 100))
         i += 1
 
