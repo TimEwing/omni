@@ -1,3 +1,3 @@
 _INF = float('infinity')
-_FILENAME = "black_1024.png"
+_FILENAME = "img3_1280.jpg"
 _SIZE = 1024

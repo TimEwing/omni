@@ -13,3 +13,12 @@ class ImageTools(object):
         output_image = Image.fromarray((arr * (256/size)).astype('uint8'))
         output_image.save(filename)
         print("Saved to {}".format(filename))
+
+    def gen_random_grid(filename, gridsize, size):
+        # output_image = np.zeros(shape=[gridsize, gridsize, 3], dtype=np.float32)
+        # for x in range(gridsize):
+        #     for y in range(gridsize):
+        #         output_image[x,y] = np.random.ran * 256
+        output_image = np.random.randn(gridsize**2).reshape([gridsize, gridsize])
+        output_image = output_image.resize([size, size])
+        ImageTools.save_image(filename, size, output_image)

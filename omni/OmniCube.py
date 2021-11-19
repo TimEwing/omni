@@ -3,6 +3,7 @@ from OmniChunk import OmniChunk
 
 class OmniCube():
     def __init__(self, colorsize, chunks):
+        # Chunks allow us to compute 
         # Chunks should be passed in as a list of ((r,g,b), size) tuples
         self.colorsize = colorsize
         self.colorsize_max = self.colorsize - 1 # goofy, but we only want to calculate it once
@@ -10,7 +11,7 @@ class OmniCube():
         self.chunk_sizes = {color: size for color, size in chunks}
         self.chunks = {}
         self.cube = {}
-        # Init cube
+        # Init cube ( loop through all possible rgb colors with colordepth=colorsize )
         for r in range(colorsize):
             for g in range(colorsize):
                 for b in range(colorsize):
@@ -25,6 +26,8 @@ class OmniCube():
 
     def set_potentials(self):
         print("  - Setting potentials")
+        # Total up color potential for each pixel in relation to other chunks
+        # TODO: Use LUT to store value already computed between the same colors
         for _, color in self.cube.items():
             potential = 0
             for chunk_pix in self.chunk_pixels:

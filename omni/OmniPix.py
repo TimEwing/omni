@@ -13,13 +13,16 @@ class OmniPix():
         self.selected = False
         self.hsv = self._hsv()
 
+    # Check if colors are equal (or two instances)
     def __eq__(self, other):
         try:
             return self.color == other.color
         except AttributeError:
             return self.color == other
 
+    # Rank colors based on intensity
     def __gt__(self, other):
+        # TODO: Use the spectral intenisty of the eye for RG&B to rank color intensity
         if self.color[1] > other.color[1]:
             return True
         elif self.color[1] < other.color[1]:
@@ -35,6 +38,7 @@ class OmniPix():
         else:
             return False
 
+    # Override how python stores OmniPix inst?
     def __hash__(self):
         return hash(self.color)
 

@@ -3,6 +3,7 @@
 ### </dragons>
 
 import re
+import math
 
 from typing import Dict, List
 
@@ -75,6 +76,7 @@ if __name__ == '__main__':
     width, height, _ = input_image.shape
 
     print("Assigning chunks")
+    # Assign a chunk to each unique color in the image (and store its # of occurences)
     input_map_reshaped = input_map.reshape(-1, input_map.shape[2]) # flat map
     chunks = np.unique(input_map_reshaped, axis=0, return_counts=True)
     chunks = list(zip(*chunks)) # make (color, count) tuples
@@ -89,13 +91,22 @@ if __name__ == '__main__':
     print("Building cube")
     cube = OmniCube(constants._SIZE, chunks)
 
+    # # Sort coords based on distance from line y=x
+    # coords = [(x,y) for x in range(width) for y in range(height)]
+    # def key(coord):
+    #     return (coord[0] - width/2) + (coord[1] - height/2)
+    # coords = sorted(coords, key=key)
+
+    # Sort coords as a function of the distance from the center
+    center = (width/2, height/2)
     coords = [(x,y) for x in range(width) for y in range(height)]
     def key(coord):
-        return (coord[0] - width/2) + (coord[1] - height/2)
+        return math.sqrt((coord[0] - width/2)**2 + (coord[1] - height/2)**2)
     coords = sorted(coords, key=key)
 
     i = 0
     for x, y in coords:
+        # Print percentage complete
         if i % 1000 == 0:
             print("\rAssigning new colors: {:.2f}%  ".format((i/len(coords)) * 100))
         i += 1
@@ -117,6 +128,7 @@ if __name__ == '__main__':
             target_color_list.append(tuple(input_image[x,y]))
         target_color_channels = zip(*target_color_list)
         target_color = [sum(chans) // len(chans) for chans in target_color_channels]
+        # Clean up our memory as we go
         input_image[x,y] = cube.pop(chunk_map[(x,y)], target_color).color
     print("\nDone")
     # save output
