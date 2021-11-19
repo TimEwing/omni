@@ -1,4 +1,6 @@
 from functools import total_ordering
+import colorsys
+
 import constants
 
 ## Style note:

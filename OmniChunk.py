@@ -2,7 +2,7 @@ import constants
 
 from heapq import heappush, heappop
 
-from classes.OmniCluster import OmniCluster
+from OmniCluster import OmniCluster
 
 class OmniChunk():
     def __init__(self, chunk_pix):

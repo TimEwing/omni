@@ -11,18 +11,19 @@ import numpy as np
 import numpy.ma as ma
 
 # Custom Imports
-from classes.ImageTools import ImageTools
-from classes.OmniCube import OmniCube
+import constants
+from ImageTools import ImageTools
+from OmniCube import OmniCube
 
 # resource.setrlimit(resource.RLIMIT_STACK, (2**29,-1))
 sys.setrecursionlimit(10**6)
 ### </dragons>
 
 if __name__ == '__main__':
-    _SIZE = 256
+    constants._SIZE = 128
     print("Opening image")
-    input_image = ImageTools.get_image('black_128.png', _SIZE)
-    input_map = ImageTools.get_image('black_128.png', _SIZE)
+    input_image = ImageTools.get_image('black_128.png', constants._SIZE)
+    input_map = ImageTools.get_image('black_128.png', constants._SIZE)
     print("  - Image shape:", input_image.shape)
     try:
         assert input_image.shape == input_map.shape
@@ -47,7 +48,7 @@ if __name__ == '__main__':
 
     # Build cube
     print("Building cube")
-    cube = OmniCube(_SIZE, chunks)
+    cube = OmniCube(constants._SIZE, chunks)
 
     coords = [(x,y) for x in range(width) for y in range(height)]
     def key(coord):
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     i = 0
     for x, y in coords:
         if i % 1000 == 0:
-            print("Assigning new colors: {:.2f}%  ".format((i/len(coords)) * 100), end='\r')
+            print("\rAssigning new colors: {:.2f}%  ".format((i/len(coords)) * 100))
         i += 1
 
         target_color_list = []
@@ -80,4 +81,4 @@ if __name__ == '__main__':
         input_image[x,y] = cube.pop(chunk_map[(x,y)], target_color).color
     print("\nDone")
     # save output
-    ImageTools.save_image('out.bmp', _SIZE, input_image)
+    ImageTools.save_image('out.bmp', constants._SIZE, input_image)

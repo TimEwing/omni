@@ -1,5 +1,5 @@
-from classes.OmniPix import OmniPix
-from classes.OmniChunk import OmniChunk
+from OmniPix import OmniPix
+from OmniChunk import OmniChunk
 
 class OmniCube():
     def __init__(self, colorsize, chunks):
