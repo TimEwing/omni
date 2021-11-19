@@ -1,29 +1,68 @@
-
-# import math
-# import colorsys
-
 ### HERE BE DRAGONS
-# Let it be known that we may get segfaults if we recur too hard
-# import resource
-import sys
-
-import numpy as np
-import numpy.ma as ma
-
-# Custom Imports
-import constants
-from ImageTools import ImageTools
-from OmniCube import OmniCube
-
-# resource.setrlimit(resource.RLIMIT_STACK, (2**29,-1))
-sys.setrecursionlimit(10**6)
+### This script generates images with all of the possible collors
 ### </dragons>
 
+import re
+
+from typing import Dict, List
+
+import constants
+
+def _printHelp():
+    print("Usage: python omni FILENAME SIZE")
+
+class _Args:
+    def __init__():
+        filename: str = constants._FILENAME
+        size: int = constants._SIZE
+
+def _parseArgs(argv: List[str]) -> _Args:
+    args = _Args
+    # Parse command line arguments
+    if (len(argv) >= 3):
+        # parse first arg
+        # see if help or -h is typed
+        if (not re.match(r'(-|--)(h)', argv[2]) == None):
+            # Show help message
+            _printHelp()
+
+        args.filename = argv[1]
+        if (len(argv) == 4):
+            try:
+                args.size = int(argv[1])
+            except ValueError:
+                raise Exception("SIZE arg (argv[2]) must be an integer")
+    else:
+        _printHelp()
+        raise Exception("Incorrect number of arguments, see help above.")
+
+    return args
+
+
 if __name__ == '__main__':
+    # import resource
+    import sys
+
+    import numpy as np
+    import numpy.ma as ma
+
+    # Custom Imports
+    import constants
+    from ImageTools import ImageTools
+    from OmniCube import OmniCube
+
+    # Parse command line arguments
+    args = _parseArgs(sys.argv)
+    constants._FILENAME = args.filename
     constants._SIZE = 128
+
+    # resource.setrlimit(resource.RLIMIT_STACK, (2**29,-1))
+    # Let it be known that we may get segfaults if we recur too hard
+    sys.setrecursionlimit(10**6)
+
     print("Opening image")
-    input_image = ImageTools.get_image('black_128.png', constants._SIZE)
-    input_map = ImageTools.get_image('black_128.png', constants._SIZE)
+    input_image = ImageTools.get_image(constants._FILENAME, constants._SIZE)
+    input_map = ImageTools.get_image(constants._FILENAME, constants._SIZE)
     print("  - Image shape:", input_image.shape)
     try:
         assert input_image.shape == input_map.shape
