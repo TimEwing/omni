@@ -1,3 +1,6 @@
 *.png
 *.jpg
 *.bmp
+__pycache__
+omni/__pycache__
+.vscode
